@@ -1,0 +1,32 @@
+# Python
+
+venv/
+**pycache**/
+*.pyc
+
+# Node
+
+node_modules/
+.next/
+
+# Environment
+
+.env
+.env.local
+
+# ChromaDB
+
+chroma_db/
+
+# Audio
+
+temp_audio/
+
+# Logs
+
+*.log
+
+# OS
+
+.DS_Store
+Thumbs.db
