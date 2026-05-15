@@ -9,3 +9,6 @@ python-dotenv
 openai
 tiktoken
 groq
+yt-dlp
+faster-whisper
+python-multipart
