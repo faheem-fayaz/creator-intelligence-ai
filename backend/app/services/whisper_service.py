@@ -5,10 +5,7 @@ from faster_whisper import WhisperModel
 
 
 # Load Whisper model once
-model = WhisperModel(
-    "tiny",
-    compute_type="int8"
-)
+model =None
 
 
 def download_audio(video_url):
@@ -64,6 +61,13 @@ def download_audio(video_url):
 
 
 def transcribe_audio(video_url):
+    global model
+
+    if model is None:
+        model = WhisperModel(
+            "tiny",
+            compute_type="int8"
+        )   
 
     audio_path = download_audio(video_url)
 
