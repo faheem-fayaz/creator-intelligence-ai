@@ -12,3 +12,5 @@ groq
 yt-dlp
 faster-whisper
 python-multipart
+langchain-groq
+langchain-core
