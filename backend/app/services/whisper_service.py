@@ -1,10 +1,6 @@
 import os
 import yt_dlp
 
-from faster_whisper import WhisperModel
-
-
-# Load Whisper model once
 model = None
 
 
@@ -31,6 +27,7 @@ def download_audio(video_url):
 
     # Use local FFmpeg if available, otherwise let yt-dlp find it on PATH
     ffmpeg_local = r"C:\ffmpeg\ffmpeg-8.1.1-essentials_build\bin"
+
     if os.path.exists(ffmpeg_local):
         ydl_opts["ffmpeg_location"] = ffmpeg_local
 
@@ -50,6 +47,8 @@ def transcribe_audio(video_url):
     global model
 
     if model is None:
+        from faster_whisper import WhisperModel
+
         model = WhisperModel("tiny", compute_type="int8")
 
     audio_path = download_audio(video_url)
