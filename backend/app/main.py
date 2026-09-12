@@ -2,27 +2,6 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from app.services.transcript_service import (
-    get_transcript,
-    extract_video_id,
-)
-
-from app.services.chunking_service import chunk_transcript
-from app.services.embedding_service import generate_embedding
-from app.services.search_service import semantic_search
-from app.services.rag_service import ask_question
-from app.services.comparison_service import compare_videos
-from app.services.hook_service import analyze_hook
-from app.services.scoring_service import score_video
-from app.services.stream_service import stream_answer
-from app.services.memory_rag_service import memory_chat
-from app.services.metadata_service import (
-    extract_basic_metadata,
-    generate_video_score,
-)
-
-from app.vectorstore.chroma_store import store_chunk, collection
-
 from app.auth.dependencies import get_current_user
 from app.auth.router import router as auth_router
 
@@ -30,7 +9,13 @@ from app.database import Base, engine
 from app.models import User
 
 
-app = FastAPI(title="Creator Intelligence API")
+# ============================================================
+# APPLICATION
+# ============================================================
+
+app = FastAPI(
+    title="Creator Intelligence API"
+)
 
 
 # ============================================================
@@ -64,6 +49,25 @@ app.add_middleware(
 # ============================================================
 
 def ingest_if_needed(url: str):
+
+    # These imports are intentionally lazy.
+    #
+    # ChromaDB and Sentence Transformers can consume
+    # significant memory, so they should NOT be imported
+    # during FastAPI startup.
+
+    from app.services.transcript_service import (
+        get_transcript,
+        extract_video_id,
+    )
+
+    from app.services.chunking_service import chunk_transcript
+    from app.services.embedding_service import generate_embedding
+
+    from app.vectorstore.chroma_store import (
+        store_chunk,
+        collection,
+    )
 
     video_id = extract_video_id(url)
 
@@ -138,6 +142,8 @@ def transcript(
     current_user: User = Depends(get_current_user)
 ):
 
+    from app.services.transcript_service import get_transcript
+
     return get_transcript(url)
 
 
@@ -164,6 +170,8 @@ def search(
     current_user: User = Depends(get_current_user)
 ):
 
+    from app.services.search_service import semantic_search
+
     return semantic_search(query)
 
 
@@ -184,6 +192,9 @@ def ask(
 
     if "error" in ingest_result:
         return ingest_result
+
+    from app.services.transcript_service import extract_video_id
+    from app.services.rag_service import ask_question
 
     video_id = extract_video_id(
         video_url
@@ -221,6 +232,8 @@ def compare(
     if "error" in ingest_result_2:
         return ingest_result_2
 
+    from app.services.comparison_service import compare_videos
+
     return compare_videos(
         video1,
         video2,
@@ -238,6 +251,8 @@ def hook_analysis(
     current_user: User = Depends(get_current_user)
 ):
 
+    from app.services.hook_service import analyze_hook
+
     return analyze_hook(url)
 
 
@@ -251,6 +266,8 @@ def score(
     current_user: User = Depends(get_current_user)
 ):
 
+    from app.services.scoring_service import score_video
+
     return score_video(url)
 
 
@@ -263,6 +280,8 @@ def stream_ask(
     query: str,
     current_user: User = Depends(get_current_user)
 ):
+
+    from app.services.stream_service import stream_answer
 
     return StreamingResponse(
         stream_answer(query),
@@ -282,6 +301,8 @@ def memory_chat_endpoint(
     current_user: User = Depends(get_current_user)
 ):
 
+    from app.services.memory_rag_service import memory_chat
+
     return memory_chat(
         session_id,
         query,
@@ -299,25 +320,31 @@ def video_score(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Lightweight video scoring endpoint.
+    Lightweight Video Score endpoint.
 
-    IMPORTANT:
-    This endpoint intentionally does NOT call
-    ingest_if_needed().
+    This endpoint intentionally does NOT use:
 
-    Video scoring only needs:
-        YouTube transcript
+    - ChromaDB
+    - Sentence Transformers
+    - embeddings
+    - ingestion
+    - Whisper for YouTube
+
+    It only needs:
+
+    YouTube transcript
         +
-        Groq
+    Groq scoring
         +
-        basic metadata
-
-    It does NOT need:
-        Sentence Transformers
-        PyTorch
-        ChromaDB
-        embeddings
+    basic metadata
     """
+
+    from app.services.transcript_service import get_transcript
+
+    from app.services.metadata_service import (
+        extract_basic_metadata,
+        generate_video_score,
+    )
 
     # --------------------------------------------------------
     # 1. Get transcript
@@ -337,10 +364,12 @@ def video_score(
     )
 
     # --------------------------------------------------------
-    # 3. Extract basic metadata
+    # 3. Extract metadata
     # --------------------------------------------------------
 
-    metadata = extract_basic_metadata(url)
+    metadata = extract_basic_metadata(
+        url
+    )
 
     # --------------------------------------------------------
     # 4. Return result
